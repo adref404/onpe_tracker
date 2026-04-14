@@ -156,7 +156,7 @@ def get_latest():
 def get_battle(
     dni_a: str = Query("07845838", description="DNI candidato A (default: López Aliaga)"),
     dni_b: str = Query("06506278", description="DNI candidato B (default: Nieto Montesinos)"),
-    horas: int = Query(24, description="Horas de historial a retornar")
+    horas: int = Query(720, description="Horas de historial a retornar (default 30 dias)")
 ):
     """
     Retorna el historial de 2 candidatos para mostrar la batalla entre ellos.

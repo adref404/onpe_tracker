@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -229,9 +230,9 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
     </div>
 
     <div class="chart-box">
-      <div class="chart-title">📈 Evolución histórica % votos válidos</div>
+      <div class="chart-title">📈 Evolución histórica % votos válidos — <span style="color:var(--green);font-weight:600">historial completo desde inicio</span></div>
       <svg id="chart-battle" viewBox="0 0 900 180" xmlns="http://www.w3.org/2000/svg" style="width:100%">
-        <text x="450" y="95" text-anchor="middle" fill="#484f58" font-size="13">Cargando historial...</text>
+        <text x="450" y="95" text-anchor="middle" fill="#484f58" font-size="13">Cargando historial desde Supabase...</text>
       </svg>
       <div class="chart-legend">
         <span id="legend-a" style="color:#60a5fa">■ Candidato A</span>
@@ -289,7 +290,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
 // Cambia esta URL por la de tu backend en Render una vez desplegado
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:8000'
-  : 'https://onpe-tracker.onrender.com';  // ← reemplaza después del deploy
+  : 'https://onpe-tracker.vercel.app/';  // ← reemplaza después del deploy
 
 const DNI_DEFAULT_A = '07845838'; // López Aliaga
 const DNI_DEFAULT_B = '06506278'; // Nieto Montesinos
@@ -343,7 +344,7 @@ async function loadBattle() {
   currentDniB = dniB;
 
   try {
-    const resp = await fetch(`${API_BASE}/api/battle?dni_a=${dniA}&dni_b=${dniB}&horas=48`);
+    const resp = await fetch(`${API_BASE}/api/battle?dni_a=${dniA}&dni_b=${dniB}&horas=720`);
     const data = await resp.json();
 
     const a = data.candidato_a;
@@ -388,8 +389,8 @@ async function loadBattle() {
     const tot2 = (a.total_votos_validos||0) + (b.total_votos_validos||0);
     const pA = tot2 ? (a.total_votos_validos / tot2 * 100).toFixed(1) : 50;
     const pB = tot2 ? (b.total_votos_validos / tot2 * 100).toFixed(1) : 50;
-    const shortA = a.nombre_candidato?.split(' ')[1] || 'A';
-    const shortB = b.nombre_candidato?.split(' ')[1] || 'B';
+    const shortA = a.nombre_partido?.split(' ')[0] || 'A';
+    const shortB = b.nombre_partido?.split(' ')[0] || 'B';
     document.getElementById('bar-a').style.width = pA + '%';
     document.getElementById('bar-b').style.width = pB + '%';
     document.getElementById('bar-a').textContent = shortA + ' ' + pA + '%';
@@ -397,14 +398,14 @@ async function loadBattle() {
 
     // Diff
     document.getElementById('diff-num').textContent = Math.abs(diff).toLocaleString('es-PE');
-    const leader = diff >= 0 ? a.nombre_candidato?.split(' ')[1] : b.nombre_candidato?.split(' ')[1];
+    const leader = diff >= 0 ? a.nombre_partido : b.nombre_partido;
     const color  = diff >= 0 ? '#60a5fa' : '#f87171';
     document.getElementById('diff-leader').innerHTML =
       `<strong style="color:${color}">${leader}</strong> lleva la delantera por ${diffPct} puntos porcentuales`;
 
     // Legend
-    document.getElementById('legend-a').textContent = '■ ' + (a.nombre_candidato?.split(' ')[1] || 'A') + ' %';
-    document.getElementById('legend-b').textContent = '■ ' + (b.nombre_candidato?.split(' ')[1] || 'B') + ' %';
+    document.getElementById('legend-a').textContent = '■ ' + (a.nombre_partido || 'A') + ' %';
+    document.getElementById('legend-b').textContent = '■ ' + (b.nombre_partido || 'B') + ' %';
 
     // Chart
     renderBattleChart(data.timeline, dniA, dniB);
@@ -427,7 +428,10 @@ function renderBattleChart(timeline, dniA, dniB) {
     pctB: snap.candidatos[dniB]?.porcentaje_votos_validos ?? null,
   })).filter(p => p.pctA !== null && p.pctB !== null);
 
-  if (pts.length < 2) return;
+  if (pts.length < 2) {
+    document.getElementById('chart-battle').innerHTML = '<text x="450" y="95" text-anchor="middle" fill="#484f58" font-size="13">Solo 1 captura disponible — el gráfico aparece con 2+ capturas</text>';
+    return;
+  }
 
   const w=900, h=180, padL=46, padR=70, padT=14, padB=30;
   const cw=w-padL-padR, ch=h-padT-padB;
