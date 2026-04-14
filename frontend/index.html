@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONPE 2026 – Election Tracker</title>
+<style>
+:root {
+  --bg:       #0d1117;
+  --surface:  #161b22;
+  --border:   #30363d;
+  --text:     #e6edf3;
+  --muted:    #8b949e;
+  --blue:     #3b82f6;
+  --red:      #ef4444;
+  --gold:     #f59e0b;
+  --green:    #3fb950;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── NAV ── */
+nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 52px;
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-logo { font-weight: 800; font-size: 1rem; color: var(--text); margin-right: 32px; display: flex; align-items: center; gap: 8px; }
+.nav-logo span { color: var(--gold); }
+.nav-tab {
+  height: 52px; padding: 0 16px; border: none; background: none;
+  color: var(--muted); font-size: 0.85rem; cursor: pointer;
+  border-bottom: 2px solid transparent; transition: all .15s;
+}
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--text); border-bottom-color: var(--blue); font-weight: 600; }
+.nav-live {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  font-size: 0.75rem; color: var(--muted);
+}
+.dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── LAYOUT ── */
+main { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+.stat-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.stat-value { font-size: 1.4rem; font-weight: 800; color: var(--text); margin-top: 4px; }
+.stat-sub { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+
+/* ── BATTLE PAGE ── */
+.battle-selector {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 20px; margin-bottom: 20px;
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+}
+.battle-selector label { font-size: .8rem; color: var(--muted); display: block; margin-bottom: 4px; }
+.battle-selector select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 7px 12px; border-radius: 8px; font-size: .85rem; min-width: 220px;
+}
+.btn-compare {
+  background: var(--blue); color: white; border: none; padding: 8px 20px;
+  border-radius: 8px; font-size: .85rem; font-weight: 600; cursor: pointer;
+  transition: background .15s; margin-top: 18px;
+}
+.btn-compare:hover { background: #2563eb; }
+
+.versus-wrap { display: flex; gap: 0; width: 100%; align-items: stretch; margin-bottom: 16px; }
+.card { flex: 1; border-radius: 12px; padding: 24px 20px; display: flex; flex-direction: column; gap: 8px; }
+.card-a { background: linear-gradient(135deg,#1a2a4a,#1e3a6e); border: 2px solid var(--blue); border-radius: 12px 0 0 12px; align-items: flex-end; text-align: right; }
+.card-b { background: linear-gradient(135deg,#2a1a1a,#5c1a1a); border: 2px solid var(--red); border-left: none; border-radius: 0 12px 12px 0; align-items: flex-start; }
+.vs-col { display: flex; align-items: center; justify-content: center; width: 50px; flex-shrink: 0; }
+.vs-circle { background: var(--bg); border: 2px solid var(--border); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: .85rem; color: var(--muted); }
+.card-rank { font-size: .68rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; opacity: .6; }
+.card-name { font-size: 1.1rem; font-weight: 900; line-height: 1.2; }
+.card-a .card-name { color: #93c5fd; }
+.card-b .card-name { color: #fca5a5; }
+.card-party { font-size: .72rem; opacity: .55; text-transform: uppercase; }
+.card-votes { font-size: 2rem; font-weight: 900; line-height: 1; margin-top: 6px; }
+.card-a .card-votes { color: #60a5fa; }
+.card-b .card-votes { color: #f87171; }
+.card-pct { font-size: .9rem; font-weight: 700; opacity: .85; }
+
+.diff-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+}
+.diff-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+.bar-wrap { display: flex; height: 32px; border-radius: 6px; overflow: hidden; gap: 2px; }
+.bar-a { background: linear-gradient(90deg,#1d4ed8,var(--blue)); display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: .78rem; font-weight: 700; transition: width 1s ease; min-width: 50px; }
+.bar-b { background: linear-gradient(90deg,#dc2626,var(--red)); display: flex; align-items: center; padding-left: 10px; font-size: .78rem; font-weight: 700; transition: width 1s ease; min-width: 50px; }
+.diff-center { text-align: center; margin-top: 12px; }
+.diff-num { font-size: 1.8rem; font-weight: 900; color: var(--gold); }
+.diff-sub { font-size: .78rem; color: var(--muted); margin-top: 2px; }
+.diff-leader { font-size: .82rem; color: var(--muted); margin-top: 4px; }
+
+/* ── CHART ── */
+.chart-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 20px; margin-bottom: 16px;
+}
+.chart-title { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px; }
+.chart-legend { display: flex; gap: 20px; font-size: .72rem; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
+
+/* ── RANKINGS TABLE ── */
+.rankings-table { width: 100%; border-collapse: collapse; }
+.rankings-table th { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+.rankings-table td { padding: 10px 12px; border-bottom: 1px solid #21262d; font-size: .85rem; }
+.rankings-table tr:hover td { background: #1c2128; }
+.rank-num { font-weight: 800; color: var(--muted); width: 32px; }
+.rank-name { font-weight: 600; }
+.rank-party { color: var(--muted); font-size: .75rem; }
+.rank-votes { font-weight: 700; font-size: .95rem; }
+.rank-pct { color: var(--muted); }
+.progress-mini { background: #21262d; border-radius: 3px; height: 4px; width: 100px; overflow: hidden; }
+.progress-mini-fill { height: 100%; background: var(--blue); border-radius: 3px; }
+
+/* ── COUNTDOWN ── */
+.bottom-bar { text-align: center; padding: 16px; font-size: .75rem; color: #484f58; }
+.bottom-bar span { color: var(--green); font-weight: 700; }
+
+/* ── EMPTY STATE ── */
+.empty { text-align: center; padding: 60px; color: var(--muted); }
+.empty .icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .card { padding: 16px 12px; }
+  .card-votes { font-size: 1.5rem; }
+  .battle-selector { flex-direction: column; }
+  .battle-selector select { min-width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">🗳️ ONPE <span>2026</span></div>
+  <button class="nav-tab active" onclick="showPage('battle', this)">⚔️ Batalla</button>
+  <button class="nav-tab" onclick="showPage('rankings', this)">📊 Rankings</button>
+  <div class="nav-live">
+    <div class="dot"></div>
+    <span id="nav-actas">Cargando...</span> &nbsp;|&nbsp;
+    <span id="nav-time">—</span>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ── BATTLE PAGE ── -->
+  <div class="page active" id="page-battle">
+
+    <div class="battle-selector">
+      <div>
+        <label>Candidato A</label>
+        <select id="sel-a"></select>
+      </div>
+      <div>
+        <label>Candidato B</label>
+        <select id="sel-b"></select>
+      </div>
+      <button class="btn-compare" onclick="loadBattle()">⚔️ Comparar</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Diferencia de votos</div>
+        <div class="stat-value" id="s-diff">—</div>
+        <div class="stat-sub" id="s-diff-pct">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Capturas guardadas</div>
+        <div class="stat-value" id="s-snaps">—</div>
+        <div class="stat-sub">en esta batalla</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Actas contabilizadas</div>
+        <div class="stat-value" id="s-actas">—</div>
+        <div class="stat-sub">al último corte</div>
+      </div>
+    </div>
+
+    <div class="versus-wrap">
+      <div class="card card-a">
+        <div class="card-rank" id="rank-a">Puesto —</div>
+        <div class="card-name" id="name-a">—</div>
+        <div class="card-party" id="party-a">—</div>
+        <div class="card-votes" id="votes-a">—</div>
+        <div class="card-pct" id="pct-a">—</div>
+      </div>
+      <div class="vs-col"><div class="vs-circle">VS</div></div>
+      <div class="card card-b">
+        <div class="card-rank" id="rank-b">Puesto —</div>
+        <div class="card-name" id="name-b">—</div>
+        <div class="card-party" id="party-b">—</div>
+        <div class="card-votes" id="votes-b">—</div>
+        <div class="card-pct" id="pct-b">—</div>
+      </div>
+    </div>
+
+    <div class="diff-box">
+      <div class="diff-label">Distribución entre ambos</div>
+      <div class="bar-wrap">
+        <div class="bar-a" id="bar-a" style="width:50%">A</div>
+        <div class="bar-b" id="bar-b" style="width:50%">B</div>
+      </div>
+      <div class="diff-center">
+        <div class="diff-num" id="diff-num">—</div>
+        <div class="diff-sub">votos de diferencia</div>
+        <div class="diff-leader" id="diff-leader"></div>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <div class="chart-title">📈 Evolución histórica % votos válidos</div>
+      <svg id="chart-battle" viewBox="0 0 900 180" xmlns="http://www.w3.org/2000/svg" style="width:100%">
+        <text x="450" y="95" text-anchor="middle" fill="#484f58" font-size="13">Cargando historial...</text>
+      </svg>
+      <div class="chart-legend">
+        <span id="legend-a" style="color:#60a5fa">■ Candidato A</span>
+        <span id="legend-b" style="color:#f87171">■ Candidato B</span>
+      </div>
+    </div>
+
+  </div><!-- /battle -->
+
+  <!-- ── RANKINGS PAGE ── -->
+  <div class="page" id="page-rankings">
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total candidatos</div>
+        <div class="stat-value" id="r-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Actas contabilizadas</div>
+        <div class="stat-value" id="r-actas">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Última actualización</div>
+        <div class="stat-value" style="font-size:1rem" id="r-time">—</div>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <table class="rankings-table" id="rankings-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Candidato</th>
+            <th>Votos</th>
+            <th>% Válidos</th>
+            <th style="width:120px">Barra</th>
+          </tr>
+        </thead>
+        <tbody id="rankings-body">
+          <tr><td colspan="5" class="empty"><div class="icon">⏳</div>Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div><!-- /rankings -->
+
+</main>
+
+<div class="bottom-bar">
+  Próxima actualización en <span id="cd">180</span>s &nbsp;·&nbsp;
+  <span id="total-updates">0</span> actualizaciones &nbsp;·&nbsp;
+  Datos oficiales ONPE
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────
+// Cambia esta URL por la de tu backend en Render una vez desplegado
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8000'
+  : 'https://TU-BACKEND.onrender.com';  // ← reemplaza después del deploy
+
+const DNI_DEFAULT_A = '07845838'; // López Aliaga
+const DNI_DEFAULT_B = '06506278'; // Nieto Montesinos
+
+// ── STATE ─────────────────────────────────────────────────────
+let allCandidates = [];
+let currentDniA   = DNI_DEFAULT_A;
+let currentDniB   = DNI_DEFAULT_B;
+let countdown     = 180;
+let totalUpdates  = 0;
+
+// ── NAV ──────────────────────────────────────────────────────
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── LOAD CANDIDATES ──────────────────────────────────────────
+async function loadCandidates() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/candidates`);
+    const data = await resp.json();
+    allCandidates = data.candidatos || [];
+
+    const selA = document.getElementById('sel-a');
+    const selB = document.getElementById('sel-b');
+    selA.innerHTML = '';
+    selB.innerHTML = '';
+
+    allCandidates.forEach(c => {
+      const label = `${c.nombre_candidato} (${c.nombre_partido})`;
+      selA.innerHTML += `<option value="${c.dni_candidato}">${label}</option>`;
+      selB.innerHTML += `<option value="${c.dni_candidato}">${label}</option>`;
+    });
+
+    // Defaults
+    selA.value = DNI_DEFAULT_A;
+    selB.value = DNI_DEFAULT_B;
+  } catch(e) {
+    console.error('loadCandidates:', e);
+  }
+}
+
+// ── LOAD BATTLE ───────────────────────────────────────────────
+async function loadBattle() {
+  const dniA = document.getElementById('sel-a').value || currentDniA;
+  const dniB = document.getElementById('sel-b').value || currentDniB;
+  currentDniA = dniA;
+  currentDniB = dniB;
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/battle?dni_a=${dniA}&dni_b=${dniB}&horas=48`);
+    const data = await resp.json();
+
+    const a = data.candidato_a;
+    const b = data.candidato_b;
+
+    if (!a || !b) { console.warn('Candidatos no encontrados en historial'); return; }
+
+    // Header cards
+    const nameA = a.nombre_candidato?.split(' ').slice(0,2).join('\n') || '—';
+    const nameB = b.nombre_candidato?.split(' ').slice(0,2).join('\n') || '—';
+    document.getElementById('name-a').textContent  = a.nombre_candidato || '—';
+    document.getElementById('name-b').textContent  = b.nombre_candidato || '—';
+    document.getElementById('party-a').textContent = a.nombre_partido || '—';
+    document.getElementById('party-b').textContent = b.nombre_partido || '—';
+    document.getElementById('votes-a').textContent = (a.total_votos_validos||0).toLocaleString('es-PE');
+    document.getElementById('votes-b').textContent = (b.total_votos_validos||0).toLocaleString('es-PE');
+    document.getElementById('pct-a').textContent   = (a.porcentaje_votos_validos||0).toFixed(3) + '% votos válidos';
+    document.getElementById('pct-b').textContent   = (b.porcentaje_votos_validos||0).toFixed(3) + '% votos válidos';
+
+    // Ranking (from latest snapshot)
+    const latestResp = await fetch(`${API_BASE}/api/latest`);
+    const latestData = await latestResp.json();
+    const cands = latestData.candidatos || [];
+    const rankA = cands.findIndex(c => c.dni_candidato === dniA) + 1;
+    const rankB = cands.findIndex(c => c.dni_candidato === dniB) + 1;
+    document.getElementById('rank-a').textContent = `Puesto #${rankA}`;
+    document.getElementById('rank-b').textContent = `Puesto #${rankB}`;
+
+    // Stats bar
+    const diff = (a.total_votos_validos||0) - (b.total_votos_validos||0);
+    const diffPct = Math.abs((a.porcentaje_votos_validos||0) - (b.porcentaje_votos_validos||0)).toFixed(3);
+    document.getElementById('s-diff').textContent     = Math.abs(diff).toLocaleString('es-PE');
+    document.getElementById('s-diff-pct').textContent = diffPct + ' puntos de diferencia';
+    document.getElementById('s-snaps').textContent    = data.total_snapshots;
+    document.getElementById('s-actas').textContent    = (a.pct_actas_contabilizadas || '—') + '%';
+
+    // Nav bar
+    document.getElementById('nav-actas').textContent = `Actas: ${a.pct_actas_contabilizadas||'—'}%`;
+    document.getElementById('nav-time').textContent  = new Date(a.timestamp + 'Z').toLocaleTimeString('es-PE');
+
+    // Bar
+    const tot2 = (a.total_votos_validos||0) + (b.total_votos_validos||0);
+    const pA = tot2 ? (a.total_votos_validos / tot2 * 100).toFixed(1) : 50;
+    const pB = tot2 ? (b.total_votos_validos / tot2 * 100).toFixed(1) : 50;
+    const shortA = a.nombre_candidato?.split(' ')[1] || 'A';
+    const shortB = b.nombre_candidato?.split(' ')[1] || 'B';
+    document.getElementById('bar-a').style.width = pA + '%';
+    document.getElementById('bar-b').style.width = pB + '%';
+    document.getElementById('bar-a').textContent = shortA + ' ' + pA + '%';
+    document.getElementById('bar-b').textContent = shortB + ' ' + pB + '%';
+
+    // Diff
+    document.getElementById('diff-num').textContent = Math.abs(diff).toLocaleString('es-PE');
+    const leader = diff >= 0 ? a.nombre_candidato?.split(' ')[1] : b.nombre_candidato?.split(' ')[1];
+    const color  = diff >= 0 ? '#60a5fa' : '#f87171';
+    document.getElementById('diff-leader').innerHTML =
+      `<strong style="color:${color}">${leader}</strong> lleva la delantera por ${diffPct} puntos porcentuales`;
+
+    // Legend
+    document.getElementById('legend-a').textContent = '■ ' + (a.nombre_candidato?.split(' ')[1] || 'A') + ' %';
+    document.getElementById('legend-b').textContent = '■ ' + (b.nombre_candidato?.split(' ')[1] || 'B') + ' %';
+
+    // Chart
+    renderBattleChart(data.timeline, dniA, dniB);
+
+    totalUpdates++;
+    document.getElementById('total-updates').textContent = totalUpdates;
+
+  } catch(e) {
+    console.error('loadBattle:', e);
+  }
+}
+
+// ── BATTLE CHART ─────────────────────────────────────────────
+function renderBattleChart(timeline, dniA, dniB) {
+  if (!timeline || timeline.length < 2) return;
+
+  const pts = timeline.map(snap => ({
+    t:    new Date(snap.timestamp + 'Z'),
+    pctA: snap.candidatos[dniA]?.porcentaje_votos_validos ?? null,
+    pctB: snap.candidatos[dniB]?.porcentaje_votos_validos ?? null,
+  })).filter(p => p.pctA !== null && p.pctB !== null);
+
+  if (pts.length < 2) return;
+
+  const w=900, h=180, padL=46, padR=70, padT=14, padB=30;
+  const cw=w-padL-padR, ch=h-padT-padB;
+  const n=pts.length;
+
+  const allV = pts.flatMap(p=>[p.pctA, p.pctB]);
+  const minV = Math.min(...allV)*0.98;
+  const maxV = Math.max(...allV)*1.02;
+
+  const xS = i => padL + (i / Math.max(n-1,1)) * cw;
+  const yS = v => padT + ch - ((v-minV)/(maxV-minV||1))*ch;
+
+  const lineA = pts.map((p,i)=>`${xS(i).toFixed(1)},${yS(p.pctA).toFixed(1)}`).join(' ');
+  const lineB = pts.map((p,i)=>`${xS(i).toFixed(1)},${yS(p.pctB).toFixed(1)}`).join(' ');
+  const area  = pts.map((p,i)=>`${xS(i).toFixed(1)},${yS(p.pctA).toFixed(1)}`).join(' ') + ' ' +
+                pts.slice().reverse().map((p,i)=>`${xS(n-1-i).toFixed(1)},${yS(p.pctB).toFixed(1)}`).join(' ');
+
+  let axes='';
+  for(let s=0;s<=4;s++){
+    const v=minV+(maxV-minV)*(s/4), y=yS(v);
+    axes += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${w-padR}" y2="${y.toFixed(1)}" stroke="#21262d" stroke-width="1"/>`;
+    axes += `<text x="${padL-4}" y="${(y+4).toFixed(1)}" font-size="10" text-anchor="end" fill="#484f58">${v.toFixed(1)}%</text>`;
+  }
+
+  let xlabels='';
+  const step=Math.max(1,Math.ceil(n/8));
+  for(let i=0;i<n;i+=step){
+    const lb=pts[i].t.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'}).replace(',','');
+    xlabels+=`<text x="${xS(i).toFixed(1)}" y="${h-8}" font-size="9" text-anchor="middle" fill="#484f58">${lb}</text>`;
+  }
+
+  const last=pts[n-1];
+  const dotA=`<circle cx="${xS(n-1).toFixed(1)}" cy="${yS(last.pctA).toFixed(1)}" r="5" fill="#3b82f6"/>`;
+  const dotB=`<circle cx="${xS(n-1).toFixed(1)}" cy="${yS(last.pctB).toFixed(1)}" r="5" fill="#ef4444"/>`;
+  const lblA=`<text x="${(xS(n-1)+8).toFixed(1)}" y="${(yS(last.pctA)+4).toFixed(1)}" font-size="11" fill="#60a5fa" font-weight="700">${last.pctA.toFixed(2)}%</text>`;
+  const lblB=`<text x="${(xS(n-1)+8).toFixed(1)}" y="${(yS(last.pctB)+4).toFixed(1)}" font-size="11" fill="#f87171" font-weight="700">${last.pctB.toFixed(2)}%</text>`;
+
+  document.getElementById('chart-battle').innerHTML =
+    `${axes}
+     <polygon points="${area}" fill="rgba(245,158,11,0.07)"/>
+     <polyline points="${lineA}" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round"/>
+     <polyline points="${lineB}" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linejoin="round"/>
+     ${dotA}${dotB}${lblA}${lblB}${xlabels}`;
+}
+
+// ── LOAD RANKINGS ────────────────────────────────────────────
+async function loadRankings() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/latest`);
+    const data = await resp.json();
+    const cands = data.candidatos || [];
+
+    document.getElementById('r-total').textContent = cands.length;
+    document.getElementById('r-actas').textContent = (data.pct_actas || '—') + '%';
+    document.getElementById('r-time').textContent  = data.timestamp
+      ? new Date(data.timestamp + 'Z').toLocaleTimeString('es-PE') : '—';
+
+    const maxV = cands[0]?.total_votos_validos || 1;
+    const medals = ['🥇','🥈','🥉'];
+
+    document.getElementById('rankings-body').innerHTML = cands.map((c,i) => {
+      const pct = (c.total_votos_validos / maxV * 100).toFixed(1);
+      return `<tr>
+        <td class="rank-num">${medals[i]||i+1}</td>
+        <td>
+          <div class="rank-name">${c.nombre_candidato||'—'}</div>
+          <div class="rank-party">${c.nombre_partido||''}</div>
+        </td>
+        <td class="rank-votes">${(c.total_votos_validos||0).toLocaleString('es-PE')}</td>
+        <td class="rank-pct">${(c.porcentaje_votos_validos||0).toFixed(3)}%</td>
+        <td><div class="progress-mini"><div class="progress-mini-fill" style="width:${pct}%"></div></div></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    console.error('loadRankings:', e);
+  }
+}
+
+// ── AUTO REFRESH ─────────────────────────────────────────────
+setInterval(() => {
+  countdown--;
+  document.getElementById('cd').textContent = countdown;
+  if (countdown <= 0) {
+    countdown = 180;
+    loadBattle();
+    loadRankings();
+  }
+}, 1000);
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  await loadCandidates();
+  await loadBattle();
+  await loadRankings();
+}
+
+init();
+</script>
+</body>
+</html>
